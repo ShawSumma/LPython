@@ -54,7 +54,7 @@ def to_lua(tree):
             ret += '%s, ' % to_lua(i)
         if ret[-2:] == ', ':
             ret = ret[:-2]
-        ret += ')\n'
+        ret += ')'
         return ret
     if isinstance(tree, ast.BinOp):
         opt = tree.op
@@ -153,7 +153,7 @@ def to_lua(tree):
     if isinstance(tree, ast.Index):
         return to_lua(tree.value)
     if isinstance(tree, ast.Str):
-        return '[[%s]]' % tree.s
+        return '"%s"' % tree.s.replac('\n', '\\n')
     if isinstance(tree, ast.For):
         ret = ''
         ret += 'for pl, %s in pairs(' % to_lua(tree.target)
@@ -172,7 +172,7 @@ def to_lua(tree):
         ret = ''
         ret += 'function %s(' % tree.name
         for i in tree.args.args:
-            ret += '%s, ' % to_lua(i)
+            ret += '%s, ' % i.arg
         if ret[-2:] == ', ':
             ret = ret[:-2]
         ret += ')\n'
@@ -183,10 +183,37 @@ def to_lua(tree):
                 hbody += '  '+i+'\n'
         body = hbody
         ret += body
+        ret += '  ::fn_ret::\n'
+        ret += '  return fn_ret\n'
         ret += 'end\n'
+        return ret
+    if isinstance(tree, ast.Return):
+        ret = ''
+        ret += 'fn_ret = %s\n' % to_lua(tree.value)
+        ret += 'goto fn_ret\n'
         return ret
     if isinstance(tree, ast.Pass):
         return ''
+    if isinstance(tree, ast.Attribute):
+        pre = tree.attr
+        post = to_lua(tree.value)
+        ret = 'pre = loadstring("return %s")()' % post
+        ret += 'pre.%s' % (pre)
+        return ret
+    elif isinstance(tree, ast.ListComp):
+        # print(dir(tree))
+        gen = tree.generators[0]
+        ifs = '{'
+        for i in gen.ifs:
+            ifs += '"%s", ' % to_lua(i)
+        if ifs[-2:] == ', ':
+            ifs = ifs[:-2]
+        ifs += '}'
+        targ = to_lua(gen.target)
+        # print(ret)
+        ret = 'listcomp({%s, "%s"}, "%s", %s)' % (to_lua(gen.iter), targ, to_lua(tree.elt), ifs)
+        return ret
+        # print(dir(gen))
     print(tree)
     raise traceError
     exit()

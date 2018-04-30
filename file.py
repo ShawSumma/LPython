@@ -1,4 +1,5 @@
-def x():
-    for i in [1,2,3,4]:
+def printf(x):
+    for i in x:
         print(i)
-x()
+x = [i * 2 for i in range(10) if i % 2 == 0]
+printf(x)
