@@ -112,12 +112,20 @@ def to_lua(tree):
         ret = to_set(tree.target, tree.value, op=op)
         return ret
     if isinstance(tree, ast.If):
+        v = vars(tree)
         test = to_lua(tree.test)
         hbody = ''
         for i in tree.body:
             hbody += '  '+to_lua(i)
         body = hbody
-        ret = 'if %s then\n%send' % (test, body)
+        ret = 'if py_true(%s) then\n%s\n' % (test, body)
+        ret += 'else\n'
+        body = to_lua(tree.orelse[0])
+        hbody = ''
+        for i in body.split('\n'):
+            hbody += '  '+i+'\n'
+        ret += hbody
+        ret += 'end'
         return ret
     if isinstance(tree, ast.Expr):
         return to_lua(tree.value)
@@ -131,7 +139,7 @@ def to_lua(tree):
             for i in llua.split('\n'):
                 hbody += '  '+i+'\n'
         body = hbody
-        ret = 'while %s do\n%send\n' % (test, body)
+        ret = 'while py_true(%s) do\n%send\n' % (test, body)
         return ret
     if isinstance(tree, ast.List):
         ret = '{'
@@ -214,6 +222,13 @@ def to_lua(tree):
         ret = 'listcomp({%s, "%s"}, "%s", %s)' % (to_lua(gen.iter), targ, to_lua(tree.elt), ifs)
         return ret
         # print(dir(gen))
+    elif isinstance(tree, ast.NameConstant):
+        cmap = {
+            False: 'false',
+            True: 'true',
+            'None': 'nil'
+        }
+        return cmap[tree.value]
     print(tree)
     raise traceError
     exit()
